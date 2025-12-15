@@ -17,7 +17,7 @@ pykrx
 
 # AI & Machine Learning
 openai>=1.0.0
-crewai==0.86.0
+crewai>=1.6.0
 crewai-tools
 langchain>=0.1.0
 langchain-openai>=0.1.0
