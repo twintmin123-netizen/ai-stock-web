@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Financial Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- 메인 스타일 -->
+    <link rel="stylesheet" href="style.css" />
+    <!-- 포트폴리오 관련 스타일 -->
+    <link rel="stylesheet" href="portfolio.css" />
+</head>
+
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <div class="header-content">
+                <div class="logo">
+                    <div class="logo-icon"></div>
+                    <h1 class="logo-text">Financial Dashboard</h1>
+                </div>
+                <nav class="nav-tabs">
+                    <button class="nav-tab active" data-tab="dashboard">
+                        <span class="tab-icon"></span>
+                        <span class="tab-label">Dashboard</span>
+                    </button>
+                    <button class="nav-tab" data-tab="analytics">
+                        <span class="tab-icon"></span>
+                        <span class="tab-label">Analytics</span>
+                    </button>
+                </nav>
+                <button class="chatbot-toggle" id="chatbotToggle">
+                    <span class="chatbot-icon"></span>
+                    <span class="chatbot-label">AI챗봇</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main">
+        <div class="container">
+            <!-- Dashboard Tab -->
+            <div class="tab-content active" data-tab-content="dashboard">
+                <!-- Market Indicators Section -->
+                <section class="section">
+                    <div class="section-header">
+                        <h2 class="section-title">시장 지표</h2>
+                        <div class="market-tabs">
+                            <button class="market-tab active" data-market="us">미국 시장</button>
+                            <button class="market-tab" data-market="korea">국내 시장</button>
+                        </div>
+                        <div class="refresh-badge">
+                            <span class="pulse-dot"></span>
+                            <span id="lastUpdate">실시간</span>
+                        </div>
+                    </div>
+
+                    <!-- US Market Indicators -->
+                    <div class="market-section" data-market-section="us">
+                        <div class="indicators-grid" id="usIndicators">
+                            <!-- Populated by JS -->
+                            <div class="indicator-card skeleton">
+                                <div class="skeleton-line"></div>
+                                <div class="skeleton-line short"></div>
+                            </div>
+                            <div class="indicator-card skeleton">
+                                <div class="skeleton-line"></div>
+                                <div class="skeleton-line short"></div>
+                            </div>
+                            <div class="indicator-card skeleton">
+                                <div class="skeleton-line"></div>
+                                <div class="skeleton-line short"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Korea Market Indicators -->
+                    <div class="market-section" data-market-section="korea" style="display: none;">
+                        <div class="indicators-grid" id="koreaIndicators">
+                            <!-- Populated by JS -->
+                            <div class="indicator-card skeleton">
+                                <div class="skeleton-line"></div>
+                                <div class="skeleton-line short"></div>
+                            </div>
+                            <div class="indicator-card skeleton">
+                                <div class="skeleton-line"></div>
+                                <div class="skeleton-line short"></div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Portfolio Section -->
+                <section class="section">
+                    <div class="section-header">
+                        <h2 class="section-title">My Portfolio</h2>
+                    </div>
+
+                    <!-- Portfolio Search -->
+                    <div class="portfolio-search-container">
+                        <div class="portfolio-search-box">
+                            <div class="portfolio-search-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round">
+                                    <circle cx="11" cy="11" r="8"></circle>
+                                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                                </svg>
+                            </div>
+                            <input type="text" class="portfolio-search-input" id="portfolioSearchInput"
+                                placeholder="종목 추가 (티커 또는 종목명)" autocomplete="off" />
+                        </div>
+                        <div class="portfolio-search-results" id="portfolioSearchResults" style="display: none;"></div>
+                    </div>
+
+                    <!-- Portfolio Grid -->
+                    <div class="portfolio-empty" id="portfolioEmpty" style="display: block;">
+                        <p>포트폴리오에 종목을 추가해보세요</p>
+                    </div>
+                    <div class="portfolio-grid" id="portfolioGrid" style="display: none;"></div>
+                </section>
+            </div>
+
+            <!-- Analytics Tab -->
+            <div class="tab-content" data-tab-content="analytics">
+                <section class="section">
+                    <div class="section-header">
+                        <h2 class="section-title">종목 분석</h2>
+                    </div>
+
+                    <!-- Search Bar -->
+                    <div class="search-container">
+                        <div class="search-box">
+                            <span class="search-icon"></span>
+                            <input type="text" class="search-input" id="stockSearch"
+                                placeholder="종목명 또는 티커 입력 (예: 삼성전자, AAPL, 005930)" autocomplete="off" />
+                            <button class="search-clear" id="searchClear" style="display: none;">✕</button>
+                        </div>
+                        <div class="search-results" id="searchResults" style="display: none;"></div>
+                    </div>
+
+                    <!-- Analysis Results -->
+                    <div class="analysis-container" id="analysisContainer" style="display: none;">
+                        <!-- Loading State -->
+                        <div class="loading-overlay" id="analysisLoading">
+                            <p class="loading-text">분석 중...</p>
+                            <p class="loading-status" id="loadingStatus">시장 데이터를 수집하고 있습니다...</p>
+                        </div>
+
+                        <!-- Analysis Content -->
+                        <div class="analysis-content" id="analysisContent">
+                            <!-- Sub Tabs Navigation -->
+                            <div class="sub-nav-tabs">
+                                <button class="sub-nav-tab active" data-sub-tab="analysis">
+                                    <span></span> 종목 분석
+                                </button>
+                                <button class="sub-nav-tab" data-sub-tab="news">
+                                    <span></span> 관련 뉴스
+                                </button>
+                                <button class="sub-nav-tab" data-sub-tab="chart">
+                                    <span></span> 주가 흐름
+                                </button>
+                                <button class="sub-nav-tab" data-sub-tab="logs">
+                                    <span></span> 분석 로그
+                                </button>
+                            </div>
+
+                            <!-- Tab 1: Analysis (종목 분석) -->
+                            <div class="sub-tab-content active" data-sub-tab-content="analysis">
+                                <!-- Analysis Target Header -->
+                                <div class="analysis-target-header" id="analysisTargetHeader" style="display: none;">
+                                    <div class="analysis-target-label">현재 분석 종목</div>
+                                    <div class="analysis-target-value" id="analysisTargetValue">-</div>
+                                </div>
+                                <!-- Action Card -->
+                                <div class="action-card" id="actionCard">
+                                    <div class="action-label">투자 판단</div>
+                                    <div class="action-value" id="actionValue">-</div>
+                                </div>
+
+                                <!-- Scores Grid -->
+                                <div class="scores-grid" id="scoresGrid">
+                                    <!-- Score cards populated by JS -->
+                                </div>
+
+                                <!-- Metrics Grid -->
+                                <div class="metrics-section">
+                                    <h3 class="metrics-title">주요 지표</h3>
+                                    <div class="metrics-grid" id="metricsGrid">
+                                        <!-- Populated by JS -->
+                                    </div>
+                                </div>
+
+                                <!-- Fundamentals -->
+                                <div class="fundamentals-section" id="fundamentalsSection">
+                                    <h3 class="fundamentals-title">재무제표</h3>
+                                    <div class="fundamentals-grid" id="fundamentalsGrid">
+                                        <!-- Populated by JS -->
+                                    </div>
+                                </div>
+
+                                <!-- AI Commentary -->
+                                <div class="commentary-card" id="commentaryCard">
+                                    <h3 class="commentary-title">AI 분석 코멘트</h3>
+                                    <div class="commentary-content" id="commentaryContent">
+                                        <!-- Populated by JS -->
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Tab 2: News (관련 뉴스) -->
+                            <div class="sub-tab-content" data-sub-tab-content="news">
+                                <div class="news-section" id="newsSection">
+                                    <h3 class="news-title">관련 뉴스</h3>
+                                    <div class="news-container" id="newsContainer">
+                                        <!-- Populated by JS -->
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Tab 3: Chart (주가 흐름) -->
+                            <div class="sub-tab-content" data-sub-tab-content="chart">
+                                <div class="chart-section">
+                                    <div class="chart-header">
+                                        <h3 class="chart-title">가격 추이</h3>
+                                        <div class="chart-controls">
+                                            <button class="chart-period-btn" data-period="1w">1W</button>
+                                            <button class="chart-period-btn" data-period="1m">1M</button>
+                                            <button class="chart-period-btn" data-period="3m">3M</button>
+                                            <button class="chart-period-btn" data-period="6m">6M</button>
+                                            <button class="chart-period-btn active" data-period="1y">1Y</button>
+                                            <button class="chart-period-btn" data-period="3y">3Y</button>
+                                        </div>
+                                    </div>
+                                    <div class="chart-container">
+                                        <canvas id="priceChart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Tab 4: Logs (분석 로그) -->
+                            <div class="sub-tab-content" data-sub-tab-content="logs">
+                                <div class="logs-section">
+                                    <div class="logs-header">
+                                        <h3 class="logs-title">분석 로그</h3>
+                                        <button class="btn-export-pdf" id="btnExportPDF" style="display: none;">
+                                            <span class="pdf-icon">📄</span>
+                                            <span class="pdf-text">PDF 리포트 다운로드</span>
+                                        </button>
+                                    </div>
+                                    <div class="logs-container" id="logsContainer">
+                                        <!-- Populated by JS -->
+                                        <div class="log-placeholder">분석 로그가 없습니다.</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </main>
+
+    <!-- Chatbot Sidebar -->
+    <aside class="chatbot-sidebar" id="chatbotSidebar">
+        <div class="chatbot-header">
+            <div class="chatbot-header-content">
+                <h3 class="chatbot-title">AI 챗봇 스톡스(Stocks)</h3>
+                <button class="chatbot-close" id="chatbotClose">✕</button>
+            </div>
+        </div>
+
+        <div class="chatbot-messages" id="chatbotMessages">
+            <div class="chat-message assistant">
+                <div class="message-content">
+                    안녕하세요! 당신의 AI챗봇 스톡스입니다! 무엇을 도와드릴까요?<br />
+                    예: '삼성전자 분석해줘', 'RSI가 뭐야?'
+                </div>
+            </div>
+        </div>
+
+        <div class="chatbot-input-container">
+            <div class="chatbot-controls">
+                <button class="voice-button" id="voiceInput" title="음성 입력">
+                    <img src="mic.svg" alt="음성 입력">
+                </button>
+                <button class="voice-toggle" id="voiceToggle" title="음성 출력">
+                    <img src="volume_up.svg" alt="음성 출력">
+                </button>
+            </div>
+            <div class="chatbot-input-wrapper">
+                <input type="text" class="chatbot-input" id="chatbotInput" placeholder="메시지를 입력하세요..."
+                    autocomplete="off" />
+                <button class="chatbot-send" id="chatbotSend">
+                    ➤
+                </button>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="app.js"></script>
+</body>
+
+</html>

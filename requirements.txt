@@ -1,0 +1,41 @@
+# Web Framework
+fastapi
+uvicorn[standard]
+
+# Data Models
+pydantic
+
+# Data Processing
+pandas
+numpy
+scipy
+
+# Finance Data
+yfinance
+finance-datareader
+pykrx
+
+# AI & Machine Learning
+openai>=1.0.0
+crewai==0.86.0
+crewai-tools
+langchain>=0.1.0
+langchain-openai>=0.1.0
+langchain-community>=0.0.20
+
+# Web Scraping & HTTP
+requests
+beautifulsoup4
+lxml
+
+# Environment & Configuration
+python-dotenv
+
+# Additional Dependencies
+aiofiles
+
+# PDF Generation
+reportlab
+
+# Pre-built wheels (avoid compilation)
+--prefer-binary

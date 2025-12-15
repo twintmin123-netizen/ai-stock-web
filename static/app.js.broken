@@ -1,0 +1,715 @@
+// ==========================================
+// Configuration
+// ==========================================
+const API_BASE = '/api';
+const DEBOUNCE_DELAY = 500;
+
+// ==========================================
+// State Management
+// ==========================================
+const state = {
+    currentTab: 'dashboard',
+    chatbotOpen: false,
+    chatMessages: [],
+    voiceEnabled: false,
+    currentAnalysis: null,
+    priceChart: null
+};
+
+// ==========================================
+// Utility Functions
+// ==========================================
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
+function formatNumber(num, decimals = 2) {
+    if (num === null || num === undefined || isNaN(num)) return 'N/A';
+    return num.toFixed(decimals);
+}
+
+function formatPercent(num, decimals = 2) {
+    if (num === null || num === undefined || isNaN(num)) return 'N/A';
+    const sign = num >= 0 ? '+' : '';
+    return `${sign}${num.toFixed(decimals)}%`;
+}
+
+function getChangeClass(value) {
+    if (value > 0) return 'positive';
+    if (value < 0) return 'negative';
+    return 'neutral';
+}
+
+function getScoreColor(score) {
+    if (score <= 2) return '#ef4444';
+    if (score <= 4) return '#f59e0b';
+    if (score <= 5) return '#fbbf24';
+    if (score <= 7) return '#10b981';
+    return '#059669';
+}
+
+function getScoreLevel(score) {
+    if (score <= 2) return '매우 부정적';
+    if (score <= 4) return '부정적';
+    if (score <= 5) return '중립';
+    if (score <= 7) return '우호적';
+    return '매우 우호적';
+}
+
+// ==========================================
+// Tab Navigation
+// ==========================================
+function initTabs() {
+    const tabs = document.querySelectorAll('.nav-tab');
+    const tabContents = document.querySelectorAll('.tab-content');
+
+    tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            const tabName = tab.dataset.tab;
+
+            // Update active states
+            tabs.forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+
+            tabContents.forEach(content => {
+                content.classList.remove('active');
+                if (content.dataset.tabContent === tabName) {
+                    content.classList.add('active');
+                }
+            });
+
+            state.currentTab = tabName;
+
+            // Load data when switching to dashboard
+            if (tabName === 'dashboard') {
+                loadMarketIndicators();
+            }
+        });
+    });
+}
+
+// ==========================================
+// Market Indicators
+// ==========================================
+async function loadMarketIndicators() {
+    try {
+        const response = await fetch(`${API_BASE}/market-status`);
+        const data = await response.json();
+
+        renderUSIndicators(data.us);
+        renderKoreaIndicators(data.korea);
+
+        // Update timestamp
+        document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString('ko-KR');
+    } catch (error) {
+        console.error('Failed to load market indicators:', error);
+    }
+}
+
+function renderUSIndicators(us) {
+    const container = document.getElementById('usIndicators');
+
+    const indicators = [
+        {
+            icon: '🇺🇸',
+            label: 'S&P 500 (SPY)',
+            value: us.spy_3m_ret,
+            isPercent: true,
+            badge: '3개월'
+        },
+        {
+            icon: '💻',
+            label: 'NASDAQ (QQQ)',
+            value: us.qqq_3m_ret,
+            isPercent: true,
+            badge: '3개월'
+        },
+        {
+            icon: '📊',
+            label: 'VIX (공포지수)',
+            value: us.vix_current,
+            isPercent: false,
+            badge: '현재'
+        },
+        {
+            icon: '📈',
+            label: 'US 10Y 국채',
+            value: us.tnx_current,
+            isPercent: false,
+            badge: '수익률',
+            suffix: '%'
+        },
+        {
+            icon: '💵',
+            label: 'DXY (달러인덱스)',
+            value: us.dxy_current,
+            isPercent: false,
+            badge: '현재'
+        },
+        {
+            icon: '😱',
+            label: 'Fear & Greed',
+            value: us.fgi_score,
+            isPercent: false,
+            badge: '0-100'
+        }
+    ];
+
+    container.innerHTML = indicators.map(ind => createIndicatorCard(ind)).join('');
+}
+
+function renderKoreaIndicators(korea) {
+    const container = document.getElementById('koreaIndicators');
+
+    if (!korea || !korea.equity) {
+        container.innerHTML = '<p class="text-muted">국내 시장 데이터를 불러올 수 없습니다.</p>';
+        return;
+    }
+
+    const equity = korea.equity || {};
+    const indicators = [];
+
+    // KOSPI
+    if (equity.KOSPI) {
+        const kospi = equity.KOSPI;
+        indicators.push({
+            icon: '🇰🇷',
+            label: 'KOSPI',
+            value: kospi.ret_3m?.value,
+            isPercent: true,
+            badge: '3개월'
+        });
+    }
+
+    // KOSDAQ
+    if (equity.KOSDAQ) {
+        const kosdaq = equity.KOSDAQ;
+        indicators.push({
+            icon: '💼',
+            label: 'KOSDAQ',
+            value: kosdaq.ret_3m?.value,
+            isPercent: true,
+            badge: '3개월'
+        });
+    }
+
+    // Korean Bonds
+    if (korea.bonds && korea.bonds['KR10Y']) {
+        const kr10y = korea.bonds['KR10Y'];
+        indicators.push({
+            icon: '📑',
+            label: '한국 10년물',
+            value: kr10y.current?.value,
+            isPercent: false,
+            badge: '수익률',
+            suffix: '%'
+        });
+    }
+
+    // VKOSPI
+    if (equity.VKOSPI) {
+        const vkospi = equity.VKOSPI;
+        indicators.push({
+            icon: '📉',
+            label: 'VKOSPI',
+            value: vkospi.current?.value,
+            isPercent: false,
+            badge: '변동성'
+        });
+    }
+
+    container.innerHTML = indicators.map(ind => createIndicatorCard(ind)).join('');
+}
+
+function createIndicatorCard(ind) {
+    const value = ind.value;
+    const displayValue = ind.isPercent
+        ? formatPercent(value)
+        : formatNumber(value, 2) + (ind.suffix || '');
+
+    const changeClass = ind.isPercent ? getChangeClass(value) : 'neutral';
+
+    return `
+        <div class="indicator-card">
+            <div class="indicator-header">
+                <div class="indicator-label">
+                    <span class="indicator-icon">${ind.icon}</span>
+                    ${ind.label}
+                </div>
+                <span class="indicator-badge">${ind.badge}</span>
+            </div>
+            <div class="indicator-value">${displayValue}</div>
+            <div class="indicator-change ${changeClass}">
+                ${ind.isPercent ? (value > 0 ? '▲' : value < 0 ? '▼' : '–') : ''}
+            </div>
+        </div>
+    `;
+}
+
+// ==========================================
+// Stock Search
+// ==========================================
+function initSearch() {
+    const searchInput = document.getElementById('stockSearch');
+    const searchClear = document.getElementById('searchClear');
+    const searchResults = document.getElementById('searchResults');
+
+    const debouncedSearch = debounce(async (query) => {
+        if (!query || query.length < 1) {
+            searchResults.style.display = 'none';
+            return;
+        }
+
+        try {
+            const response = await fetch(`${API_BASE}/search?query=${encodeURIComponent(query)}`);
+            const data = await response.json();
+
+            if (data.results && data.results.length > 0) {
+                renderSearchResults(data.results);
+                searchResults.style.display = 'block';
+            } else {
+                searchResults.innerHTML = '<div class="search-result-item"><p class="text-muted">검색 결과가 없습니다.</p></div>';
+                searchResults.style.display = 'block';
+            }
+        } catch (error) {
+            console.error('Search failed:', error);
+        }
+    }, DEBOUNCE_DELAY);
+
+    searchInput.addEventListener('input', (e) => {
+        const value = e.target.value;
+        searchClear.style.display = value ? 'flex' : 'none';
+        debouncedSearch(value);
+    });
+
+    searchClear.addEventListener('click', () => {
+        searchInput.value = '';
+        searchClear.style.display = 'none';
+        searchResults.style.display = 'none';
+    });
+
+    // Close results when clicking outside
+    document.addEventListener('click', (e) => {
+        if (!searchInput.contains(e.target) && !searchResults.contains(e.target)) {
+            searchResults.style.display = 'none';
+        }
+    });
+}
+
+function renderSearchResults(results) {
+    const searchResults = document.getElementById('searchResults');
+
+    searchResults.innerHTML = results.slice(0, 10).map(result => `
+        <div class="search-result-item" data-ticker="${result.symbol}">
+            <div class="result-ticker">${result.symbol}</div>
+            <div class="result-name">${result.name || result.symbol}</div>
+        </div>
+    `).join('');
+
+    // Add click handlers
+    searchResults.querySelectorAll('.search-result-item').forEach(item => {
+        item.addEventListener('click', () => {
+            const ticker = item.dataset.ticker;
+            analyzeStock(ticker);
+            searchResults.style.display = 'none';
+        });
+    });
+}
+
+// ==========================================
+// Stock Analysis
+// ==========================================
+async function analyzeStock(ticker) {
+    const container = document.getElementById('analysisContainer');
+    const loading = document.getElementById('analysisLoading');
+    const content = document.getElementById('analysisContent');
+
+    container.style.display = 'block';
+    loading.style.display = 'flex';
+    content.style.display = 'none';
+
+    try {
+        const response = await fetch(`${API_BASE}/stock/${ticker}/analysis`);
+        const data = await response.json();
+
+        state.currentAnalysis = data;
+
+        // Render all sections
+        renderActionCard(data.action);
+        renderScoreCards(data);
+        renderPriceChart(data.chart_data);
+        renderMetrics(data);
+        renderFundamentals(data.fundamentals);
+        renderCommentary(data.overall_comment);
+        renderNews(data.news);
+
+        loading.style.display = 'none';
+        content.style.display = 'grid';
+    } catch (error) {
+        console.error('Analysis failed:', error);
+        loading.innerHTML = `
+            <div class="loading-text">분석 실패: ${error.message}</div>
+        `;
+    }
+}
+
+function renderActionCard(action) {
+    const actionValue = document.getElementById('actionValue');
+    actionValue.textContent = action || '데이터 없음';
+}
+
+function renderScoreCards(data) {
+    const container = document.getElementById('scoresGrid');
+
+    const scores = [
+        {
+            title: '시장 점수',
+            score: data.market_score,
+            type: 'market'
+        },
+        {
+            title: '종목 점수',
+            score: data.company_score,
+            type: 'company'
+        },
+        {
+            title: '3개월 전망',
+            score: data.outlook_score,
+            type: 'outlook'
+        }
+    ];
+
+    container.innerHTML = scores.map(s => {
+        const color = getScoreColor(s.score);
+        const level = getScoreLevel(s.score);
+        const scoreNum = s.score !== null && !isNaN(s.score) ? s.score : 'N/A';
+
+        return `
+            <div class="score-card">
+                <div class="score-title">${s.title}</div>
+                <div class="score-value-wrapper">
+                    <div class="score-level" style="color: ${color};">${level}</div>
+                    <div class="score-number">${scoreNum}/10</div>
+                </div>
+                <div class="score-description">
+                    ${getScoreDescription(s.score, s.type)}
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function getScoreDescription(score, type) {
+    const target = type === 'market' ? '시장 전반' : type === 'company' ? '해당 종목' : '향후 3개월 전망';
+
+    if (score === null || isNaN(score)) {
+        return `${target}을(를) 판단하기 위한 데이터가 부족합니다.`;
+    }
+
+    if (score <= 2) return `${target}이(가) 매우 부정적인 구간입니다.`;
+    if (score <= 4) return `${target}이(가) 다소 부정적인 구간입니다.`;
+    if (score <= 5) return `${target}이(가) 뚜렷한 방향성이 없는 중립 구간입니다.`;
+    if (score <= 7) return `${target}이(가) 비교적 우호적인 구간입니다.`;
+    return `${target}이(가) 매우 우호적인 구간입니다.`;
+}
+
+function renderPriceChart(chartData) {
+    const canvas = document.getElementById('priceChart');
+    const ctx = canvas.getContext('2d');
+
+    // Destroy existing chart if any
+    if (state.priceChart) {
+        state.priceChart.destroy();
+    }
+
+    const prices = chartData.prices || [];
+    const dates = chartData.dates || [];
+
+    state.priceChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: dates,
+            datasets: [{
+                label: '종가',
+                data: prices,
+                borderColor: '#3b82f6',
+                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                borderWidth: 2,
+                fill: true,
+                tension: 0.4,
+                pointRadius: 0,
+                pointHoverRadius: 6,
+                pointHoverBackgroundColor: '#3b82f6',
+                pointHoverBorderColor: '#fff',
+                pointHoverBorderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    mode: 'index',
+                    intersect: false,
+                    backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                    titleColor: '#f8fafc',
+                    bodyColor: '#cbd5e1',
+                    borderColor: 'rgba(59, 130, 246, 0.5)',
+                    borderWidth: 1,
+                    padding: 12,
+                    displayColors: false,
+                    callbacks: {
+                        label: function (context) {
+                            return '가격: $' + context.parsed.y.toFixed(2);
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    display: true,
+                    grid: {
+                        color: 'rgba(148, 163, 184, 0.1)',
+                        drawBorder: false
+                    },
+                    ticks: {
+                        color: '#94a3b8',
+                        maxTicksLimit: 8
+                    }
+                },
+                y: {
+                    display: true,
+                    grid: {
+                        color: 'rgba(148, 163, 184, 0.1)',
+                        drawBorder: false
+                    },
+                    ticks: {
+                        color: '#94a3b8',
+                        callback: function (value) {
+                            return '$' + value.toFixed(0);
+                        }
+                    }
+                }
+            },
+            interaction: {
+                mode: 'nearest',
+                axis: 'x',
+                intersect: false
+            }
+        }
+    });
+}
+
+function renderMetrics(data) {
+    const container = document.getElementById('metricsGrid');
+
+    const metrics = [
+        { label: '1주 수익률', value: formatPercent(data.ret_1w) },
+        { label: '1개월 수익률', value: formatPercent(data.ret_1m) },
+        { label: '3개월 수익률', value: formatPercent(data.ret_3m) },
+        { label: '3개월 기대수익', value: formatPercent(data.exp_3m) },
+        { label: 'RSI (14)', value: formatNumber(data.rsi, 1) }
+    ];
+
+    container.innerHTML = metrics.map(m => `
+        <div class="metric-item">
+            <div class="metric-label">${m.label}</div>
+            <div class="metric-value">${m.value}</div>
+        </div>
+    `).join('');
+}
+
+function renderFundamentals(fundamentals) {
+    const section = document.getElementById('fundamentalsSection');
+    const container = document.getElementById('fundamentalsGrid');
+
+    if (!fundamentals || Object.keys(fundamentals).length === 0) {
+        section.style.display = 'none';
+        return;
+    }
+
+    section.style.display = 'block';
+
+    const items = [];
+
+    if (fundamentals.revenue_growth_yoy !== undefined) {
+        items.push({ label: '매출 성장률 (YoY)', value: formatPercent(fundamentals.revenue_growth_yoy * 100, 1) });
+    }
+    if (fundamentals.operating_margin !== undefined) {
+        items.push({ label: '영업이익률', value: formatPercent(fundamentals.operating_margin * 100, 1) });
+    }
+    if (fundamentals.roe !== undefined) {
+        items.push({ label: 'ROE', value: formatPercent(fundamentals.roe * 100, 1) });
+    }
+    if (fundamentals.debt_to_equity !== undefined) {
+        items.push({ label: '부채비율 (D/E)', value: formatNumber(fundamentals.debt_to_equity, 2) });
+    }
+    if (fundamentals.pe !== undefined) {
+        items.push({ label: 'PER', value: formatNumber(fundamentals.pe, 2) });
+    }
+    if (fundamentals.pb !== undefined) {
+        items.push({ label: 'PBR', value: formatNumber(fundamentals.pb, 2) });
+    }
+
+    container.innerHTML = items.map(item => `
+        <div class="fundamental-item">
+            <div class="fundamental-label">${item.label}</div>
+            <div class="fundamental-value">${item.value}</div>
+        </div>
+    `).join('');
+}
+
+function renderCommentary(comment) {
+    const container = document.getElementById('commentaryContent');
+    function initChatbot() {
+        const toggle = document.getElementById('chatbotToggle');
+        const close = document.getElementById('chatbotClose');
+        const sidebar = document.getElementById('chatbotSidebar');
+        const input = document.getElementById('chatbotInput');
+        const send = document.getElementById('chatbotSend');
+        const voiceInput = document.getElementById('voiceInput');
+        const voiceToggle = document.getElementById('voiceToggle');
+
+        toggle.addEventListener('click', () => {
+            sidebar.classList.add('open');
+            state.chatbotOpen = true;
+        });
+
+        close.addEventListener('click', () => {
+            sidebar.classList.remove('open');
+            state.chatbotOpen = false;
+        });
+
+        send.addEventListener('click', () => sendMessage());
+
+        input.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        voiceToggle.addEventListener('click', () => {
+            state.voiceEnabled = !state.voiceEnabled;
+            voiceToggle.classList.toggle('active', state.voiceEnabled);
+        });
+
+        // Voice input - placeholder (requires microphone permission)
+        voiceInput.addEventListener('click', async () => {
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                alert('음성 입력이 지원되지 않는 브라우저입니다.');
+                return;
+            }
+
+            // This would require actual implementation with MediaRecorder API
+            alert('음성 입력 기능은 곧 지원될 예정입니다.');
+        });
+    }
+
+    async function sendMessage() {
+        const input = document.getElementById('chatbotInput');
+        const message = input.value.trim();
+
+        if (!message) return;
+
+        // Add user message to UI
+        addChatMessage('user', message);
+        input.value = '';
+
+        // Prepare context
+        let context = '';
+        if (state.currentAnalysis) {
+            context = `현재 분석 중인 종목: ${state.currentAnalysis.ticker}\n`;
+            context += `투자 판단: ${state.currentAnalysis.action}\n`;
+            context += `시장 점수: ${state.currentAnalysis.market_score}/10\n`;
+            context += `종목 점수: ${state.currentAnalysis.company_score}/10\n`;
+        }
+
+        try {
+            const response = await fetch(`${API_BASE}/chat`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    messages: [
+                        ...state.chatMessages,
+                        { role: 'user', content: message }
+                    ],
+                    context: context
+                })
+            });
+
+            const data = await response.json();
+            const assistantMessage = data.response || '응답을 생성할 수 없습니다.';
+
+            addChatMessage('assistant', assistantMessage);
+
+            // Text-to-speech if enabled
+            if (state.voiceEnabled) {
+                playTextToSpeech(assistantMessage);
+            }
+        } catch (error) {
+            console.error('Chat failed:', error);
+            addChatMessage('assistant', '죄송합니다. 오류가 발생했습니다.');
+        }
+    }
+
+    function addChatMessage(role, content) {
+        const messagesContainer = document.getElementById('chatbotMessages');
+
+        state.chatMessages.push({ role, content });
+
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `chat-message ${role}`;
+        messageDiv.innerHTML = `<div class="message-content">${content}</div>`;
+
+        messagesContainer.appendChild(messageDiv);
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+
+    async function playTextToSpeech(text) {
+        try {
+            const response = await fetch(`${API_BASE}/tts`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ text })
+            });
+
+            if (response.ok) {
+                const audioBlob = await response.blob();
+                const audioUrl = URL.createObjectURL(audioBlob);
+                const audio = new Audio(audioUrl);
+                audio.play();
+            }
+        } catch (error) {
+            console.error('TTS failed:', error);
+        }
+    }
+
+    // ==========================================
+    // Initialization
+    // ==========================================
+    document.addEventListener('DOMContentLoaded', () => {
+        initTabs();
+        initSearch();
+        initChatbot();
+
+        // Load initial data
+        loadMarketIndicators();
+
+        // Refresh market data every 5 minutes
+        setInterval(loadMarketIndicators, 5 * 60 * 1000);
+    });

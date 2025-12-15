@@ -1,0 +1,9 @@
+@echo off
+echo Starting FastAPI server on port 8001...
+start "FastAPI" cmd /k "cd /d %~dp0 && call myenv312\\Scripts\\activate && uvicorn api:app --host 0.0.0.0 --port 8001 --reload"
+
+echo Waiting for server to start...
+timeout /t 5 /nobreak > nul
+
+echo Opening browser...
+start http://localhost:8001
