@@ -1,4 +1,21 @@
-# Python
+# =========================
+# Environment & Secrets
+# =========================
+.env
+.env.*
+.env.local
+
+# =========================
+# Virtual Environments
+# =========================
+myenv*/
+.venv/
+venv/
+ENV/
+
+# =========================
+# Python cache / build
+# =========================
 __pycache__/
 *.py[cod]
 *$py.class
@@ -9,38 +26,29 @@ dist/
 build/
 *.egg
 
-# Virtual Environment
-myenv*/
-.venv/
-venv/
-ENV/
-env/
-
-# Environment Variables (IMPORTANT: Never commit API keys!)
-.env
-.env.local
-.env.*.local
-
-# IDE
+# =========================
+# IDE / OS
+# =========================
 .vscode/
 .idea/
-*.swp
-*.swo
-*~
-
-# OS
 .DS_Store
 Thumbs.db
 
-# Cache & Logs
+# =========================
+# Logs / Cache
+# =========================
 cache/
 *.log
 *.cache
 
-# Data Files
+# =========================
+# Data files
+# =========================
 *.xml
 CORPCODE.xml
 
-# Test
-tests/__pycache__/
+# =========================
+# Test cache
+# =========================
 .pytest_cache/
+tests/__pycache__/
